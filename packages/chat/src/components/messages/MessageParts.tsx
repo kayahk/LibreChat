@@ -1,19 +1,17 @@
 import React, { useMemo } from 'react';
-import { useRecoilValue } from 'recoil';
-import { ContentRow, HoverButtons } from '@librechat/chat/components';
-import type { TMessageProps, TMessageIcon } from '~/common';
-import ResumeAuthorHeader from '~/components/Chat/Messages/Content/Parts/ResumeAuthorHeader';
-import { useLocalize, useAttachments, useMessageHelpers, useContentMetadata } from '~/hooks';
-import { areMessageRowPropsEqual } from '~/utils';
-import store from '~/store';
+import { useLocalize } from '@librechat/client';
+import type { NamedExoticComponent, ReactElement } from 'react';
+import type { MessageIconData } from '../../react/messages/host';
+import type { TMessageProps } from '../../react/messages/types';
+import useContentMetadata from '../../react/messages/useContentMetadata';
+import { areMessageRowPropsEqual } from '../../react/messages/equal';
+import { useMessagesHost } from '../../react/messages/host';
+import useMessageHelpers from './useMessageHelpers';
+import useAttachments from './useAttachments';
+import HoverButtons from './HoverButtons';
+import ContentRow from './ContentRow';
 
-/**
- * The one header every assistant message hands its parts. It reads the author from
- * `AuthorContext`, so the author resolving after paint cannot break the parts' memo.
- */
-const RESUME_AUTHOR_HEADER = <ResumeAuthorHeader />;
-
-function MessageParts(props: TMessageProps) {
+function MessageParts(props: TMessageProps): ReactElement | null {
   const localize = useLocalize();
   const { message, siblingIdx, siblingCount, setSiblingIdx } = props;
   const { attachments, searchResults } = useAttachments({
@@ -38,7 +36,8 @@ function MessageParts(props: TMessageProps) {
     hasConfiguredSender,
   } = useMessageHelpers(props, searchResults);
 
-  const maximizeChatSpace = useRecoilValue(store.maximizeChatSpace);
+  const host = useMessagesHost();
+  const maximizeChatSpace = host.useMaximizeChatSpace();
   const { messageId = null, isCreatedByUser } = message ?? {};
 
   const name = useMemo(() => {
@@ -54,7 +53,7 @@ function MessageParts(props: TMessageProps) {
     return result;
   }, [assistant, agent, isCreatedByUser, localize]);
 
-  const iconData: TMessageIcon = useMemo(
+  const iconData: MessageIconData = useMemo(
     () => ({
       endpoint: message?.endpoint ?? conversation?.endpoint,
       model: message?.model ?? conversation?.model,
@@ -123,7 +122,7 @@ function MessageParts(props: TMessageProps) {
               isLast={isLast}
             />
           }
-          authorHeader={RESUME_AUTHOR_HEADER}
+          authorHeader={host.renderAuthorHeader()}
           renderOwnerId={message.clientQueueParentMessageId}
         />
       </div>
@@ -131,4 +130,9 @@ function MessageParts(props: TMessageProps) {
   );
 }
 
-export default React.memo(MessageParts, areMessageRowPropsEqual);
+const MemoizedMessageParts: NamedExoticComponent<TMessageProps> = React.memo(
+  MessageParts,
+  areMessageRowPropsEqual,
+);
+
+export default MemoizedMessageParts;
